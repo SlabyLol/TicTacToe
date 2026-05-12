@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --x-color: #e8614a;
+    --x-glow: rgba(232,97,74,0.35);
+    --o-color: #4ab3e8;
+    --o-glow: rgba(74,179,232,0.35);
+    --text: #f0f0f8;
+    --muted: rgba(240,240,248,0.45);
+    --accent: #c084fc;
+    --win-line: rgba(255,255,255,0.9);
+    --radius: 16px;
+    --cell-radius: 14px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 20%, rgba(192,132,252,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 80%, rgba(74,179,232,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 60% 20%, rgba(232,97,74,0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .app {
+    position: relative;
+    width: min(420px, 94vw);
+    z-index: 1;
+  }
+
+  /* ──── HEADER ──── */
+  .logo {
+    text-align: center;
+    margin-bottom: 2rem;
+    letter-spacing: -0.03em;
+    font-size: clamp(2rem, 8vw, 2.8rem);
+    font-weight: 800;
+  }
+  .logo .x { color: var(--x-color); }
+  .logo .sep { color: var(--muted); font-weight: 400; margin: 0 4px; }
+  .logo .o { color: var(--o-color); }
+
+  /* ──── SCREENS ──── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ──── MENU ──── */
+  .menu-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 2rem;
+  }
+  .menu-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .mode-btn {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.4rem;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    margin-bottom: 0.75rem;
+    text-align: left;
+  }
+  .mode-btn:last-child { margin-bottom: 0; }
+  .mode-btn:hover {
+    border-color: var(--border2);
+    background: rgba(255,255,255,0.05);
+    transform: translateY(-1px);
+  }
+  .mode-btn:active { transform: translateY(0); }
+  .mode-btn .icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .mode-btn.bot .icon { background: rgba(192,132,252,0.15); }
+  .mode-btn.pvp .icon { background: rgba(74,179,232,0.15); }
+  .mode-btn sub {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ──── GAME SCREEN ──── */
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 0 1.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .back-btn:hover { color: var(--text); }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+  }
+  .player-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    opacity: 0.4;
+    transition: opacity 0.3s, background 0.3s;
+    font-weight: 500;
+  }
+  .player-tag.x { color: var(--x-color); }
+  .player-tag.o { color: var(--o-color); }
+  .player-tag.active { opacity: 1; }
+  .player-tag.active.x { background: var(--x-glow); }
+  .player-tag.active.o { background: var(--o-glow); }
+
+  .score-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  .score-display span { color: var(--text); font-weight: 500; }
+
+  /* ──── BOARD ──── */
+  .board-wrap {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .cell {
+    aspect-ratio: 1;
+    border-radius: var(--cell-radius);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2rem, 10vw, 3rem);
+    font-weight: 800;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .cell:hover:not(.taken):not(.locked) {
+    background: rgba(255,255,255,0.06);
+    border-color: var(--border2);
+    transform: scale(1.03);
+  }
+  .cell.taken { cursor: default; }
+  .cell.locked { cursor: not-allowed; }
+  .cell.x-cell { color: var(--x-color); }
+  .cell.o-cell { color: var(--o-color); }
+
+  .cell.pop {
+    animation: pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .cell.win-cell {
+    animation: winPulse 0.5s ease forwards;
+  }
+  @keyframes winPulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.12); }
+    100% { transform: scale(1.08); }
+  }
+  .cell.x-cell.win-cell { background: var(--x-glow); border-color: var(--x-color); }
+  .cell.o-cell.win-cell { background: var(--o-glow); border-color: var(--o-color); }
+
+  /* ──── RESULT OVERLAY ──── */
+  .result-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,15,0.88);
+    border-radius: var(--radius);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+  }
+  .result-overlay.show { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .result-emoji { font-size: 3rem; line-height: 1; }
+  .result-text {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .result-text.x-win { color: var(--x-color); }
+  .result-text.o-win { color: var(--o-color); }
+  .result-text.draw { color: var(--muted); }
+
+  /* ──── BUTTONS ROW ──── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+  }
+  .action-btn {
+    flex: 1;
+    border-radius: 12px;
+    padding: 0.85rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    border: 1px solid var(--border2);
+  }
+  .action-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .action-btn:active { transform: translateY(0); }
+  .action-btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+  }
+  .action-btn.secondary {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  /* ──── BOT DIFFICULTY ──── */
+  .diff-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .diff-btn {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.5rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .diff-btn:hover { border-color: var(--border2); color: var(--text); }
+  .diff-btn.active {
+    background: rgba(192,132,252,0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ──── BOT THINKING ──── */
+  .thinking {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    height: 16px;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.06em;
+    animation: blink 1.2s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="logo"><span class="x">X</span><span class="sep">/</span><span class="o">O</span></div>
+
+  <!-- ══════════════ MENU ══════════════ -->
+  <div id="menu" class="screen active">
+    <div class="menu-card">
+      <div class="menu-title">Spielmodus wählen</div>
+      <button class="mode-btn bot" onclick="startGame('bot')">
+        <div class="icon">🤖</div>
+        <div>
+          Gegen Bot spielen
+          <sub>Einzelspieler · KI-Gegner</sub>
+        </div>
+      </button>
+      <button class="mode-btn pvp" onclick="startGame('pvp')">
+        <div class="icon">👥</div>
+        <div>
+          Spieler vs Spieler
+          <sub>Zwei Spieler · Lokales Spiel</sub>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ GAME ══════════════ -->
+  <div id="game" class="screen">
+    <button class="back-btn" onclick="goMenu()">← Menü</button>
+
+    <div id="diffRow" class="diff-row" style="display:none">
+      <button class="diff-btn active" data-diff="easy" onclick="setDiff('easy')">Leicht</button>
+      <button class="diff-btn" data-diff="medium" onclick="setDiff('medium')">Mittel</button>
+      <button class="diff-btn" data-diff="hard" onclick="setDiff('hard')">Schwer</button>
+    </div>
+
+    <div class="status-bar">
+      <div id="tagX" class="player-tag x active">
+        <span id="nameX">Spieler X</span>
+      </div>
+      <div class="score-display">
+        <span id="scoreX">0</span> – <span id="scoreO">0</span>
+      </div>
+      <div id="tagO" class="player-tag o">
+        <span id="nameO">Spieler O</span>
+      </div>
+    </div>
+
+    <div id="thinking" class="thinking" style="display:none">Bot denkt nach…</div>
+
+    <div class="board-wrap">
+      <div class="board" id="board">
+        <div class="cell" onclick="handleClick(0)"></div>
+        <div class="cell" onclick="handleClick(1)"></div>
+        <div class="cell" onclick="handleClick(2)"></div>
+        <div class="cell" onclick="handleClick(3)"></div>
+        <div class="cell" onclick="handleClick(4)"></div>
+        <div class="cell" onclick="handleClick(5)"></div>
+        <div class="cell" onclick="handleClick(6)"></div>
+        <div class="cell" onclick="handleClick(7)"></div>
+        <div class="cell" onclick="handleClick(8)"></div>
+      </div>
+      <div class="result-overlay" id="resultOverlay">
+        <div class="result-emoji" id="resultEmoji"></div>
+        <div class="result-text" id="resultText"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="action-btn secondary" onclick="goMenu()">← Menü</button>
+      <button class="action-btn primary" onclick="resetRound()">Neue Runde ↺</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  let mode = 'bot';
+  let difficulty = 'hard';
+  let board = Array(9).fill('');
+  let current = 'X';
+  let gameOver = false;
+  let scores = { X: 0, O: 0 };
+  let botDelay = false;
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function startGame(m) {
+    mode = m;
+    scores = { X: 0, O: 0 };
+    document.getElementById('diffRow').style.display = m === 'bot' ? 'flex' : 'none';
+    document.getElementById('thinking').style.display = 'none';
+    document.getElementById('nameX').textContent = m === 'bot' ? 'Du (X)' : 'Spieler X';
+    document.getElementById('nameO').textContent = m === 'bot' ? 'Bot (O)' : 'Spieler O';
+    updateScore();
+    show('game');
+    resetRound();
+  }
+
+  function goMenu() {
+    show('menu');
+    botDelay = false;
+  }
+
+  function setDiff(d) {
+    difficulty = d;
+    document.querySelectorAll('.diff-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.diff === d);
+    });
+    resetRound();
+  }
+
+  function resetRound() {
+    board = Array(9).fill('');
+    current = 'X';
+    gameOver = false;
+    botDelay = false;
+    document.getElementById('resultOverlay').classList.remove('show');
+    document.getElementById('thinking').style.display = 'none';
+    renderBoard();
+    updateTurnIndicator();
+  }
+
+  function renderBoard() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach((cell, i) => {
+      cell.textContent = board[i];
+      cell.className = 'cell';
+      if (board[i] === 'X') cell.classList.add('x-cell', 'taken');
+      if (board[i] === 'O') cell.classList.add('o-cell', 'taken');
+      if (gameOver) cell.classList.add('locked');
+    });
+  }
+
+  function handleClick(i) {
+    if (gameOver || board[i] || botDelay) return;
+    if (mode === 'bot' && current === 'O') return;
+    placeMove(i, current);
+  }
+
+  function placeMove(i, player) {
+    board[i] = player;
+    const cell = document.querySelectorAll('.cell')[i];
+    cell.textContent = player;
+    cell.classList.add(player === 'X' ? 'x-cell' : 'o-cell', 'taken', 'pop');
+    setTimeout(() => cell.classList.remove('pop'), 220);
+
+    const win = checkWin(board, player);
+    if (win) {
+      endGame(player, win);
+      return;
+    }
+    if (board.every(c => c)) {
+      endGame(null, null);
+      return;
+    }
+    current = current === 'X' ? 'O' : 'X';
+    updateTurnIndicator();
+
+    if (mode === 'bot' && current === 'O' && !gameOver) {
+      botDelay = true;
+      document.getElementById('thinking').style.display = 'block';
+      setTimeout(() => {
+        if (!gameOver) {
+          document.getElementById('thinking').style.display = 'none';
+          const move = getBotMove();
+          botDelay = false;
+          placeMove(move, 'O');
+        }
+      }, 550 + Math.random() * 400);
+    }
+  }
+
+  function updateTurnIndicator() {
+    document.getElementById('tagX').classList.toggle('active', current === 'X');
+    document.getElementById('tagO').classList.toggle('active', current === 'O');
+  }
+
+  function checkWin(b, player) {
+    return WINS.find(combo => combo.every(i => b[i] === player)) || null;
+  }
+
+  function endGame(winner, winCombo) {
+    gameOver = true;
+    botDelay = false;
+    document.getElementById('thinking').style.display = 'none';
+    const overlay = document.getElementById('resultOverlay');
+    const emoji = document.getElementById('resultEmoji');
+    const text = document.getElementById('resultText');
+
+    if (winner) {
+      scores[winner]++;
+      updateScore();
+      winCombo.forEach(i => {
+        const cell = document.querySelectorAll('.cell')[i];
+        cell.classList.add('win-cell');
+      });
+      if (winner === 'X') {
+        emoji.textContent = mode === 'bot' ? '🎉' : '🏆';
+        text.textContent = mode === 'bot' ? 'Du gewinnst!' : 'Spieler X gewinnt!';
+        text.className = 'result-text x-win';
+      } else {
+        emoji.textContent = mode === 'bot' ? '🤖' : '🏆';
+        text.textContent = mode === 'bot' ? 'Bot gewinnt!' : 'Spieler O gewinnt!';
+        text.className = 'result-text o-win';
+      }
+    } else {
+      emoji.textContent = '🤝';
+      text.textContent = 'Unentschieden!';
+      text.className = 'result-text draw';
+    }
+
+    setTimeout(() => overlay.classList.add('show'), 300);
+  }
+
+  function updateScore() {
+    document.getElementById('scoreX').textContent = scores.X;
+    document.getElementById('scoreO').textContent = scores.O;
+  }
+
+  /* ══ BOT LOGIC ══ */
+  function getBotMove() {
+    const empty = board.map((v, i) => v === '' ? i : null).filter(i => i !== null);
+    if (difficulty === 'easy') {
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+    if (difficulty === 'medium') {
+      const win = findBest('O');
+      if (win !== -1) return win;
+      const block = findBest('X');
+      if (block !== -1) return block;
+      if (Math.random() < 0.35) return empty[Math.floor(Math.random() * empty.length)];
+      return minimax(board, 0, true).index;
+    }
+    return minimax(board, 0, true).index;
+  }
+
+  function findBest(player) {
+    for (const i of board.map((v, i) => v === '' ? i : null).filter(i => i !== null)) {
+      const copy = [...board];
+      copy[i] = player;
+      if (checkWin(copy, player)) return i;
+    }
+    return -1;
+  }
+
+  function minimax(b, depth, isMax) {
+    const oWin = checkWin(b, 'O');
+    if (oWin) return { score: 10 - depth };
+    const xWin = checkWin(b, 'X');
+    if (xWin) return { score: depth - 10 };
+    const empty = b.map((v, i) => v === '' ? i : null).filter(i => i !== null);
+    if (empty.length === 0) return { score: 0 };
+
+    let best = isMax ? { score: -Infinity } : { score: Infinity };
+    for (const i of empty) {
+      b[i] = isMax ? 'O' : 'X';
+      const result = minimax(b, depth + 1, !isMax);
+      b[i] = '';
+      result.index = i;
+      if (isMax ? result.score > best.score : result.score < best.score) best = result;
+    }
+    return best;
+  }
+</script>
+</body>
+</html>
